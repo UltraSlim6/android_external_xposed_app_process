@@ -39,7 +39,7 @@ endif
 
 LOCAL_WHOLE_STATIC_LIBRARIES := libsigchain
 
-LOCAL_MODULE := xposed
+LOCAL_MODULE := app_process
 LOCAL_MODULE_TAGS := optional
 LOCAL_STRIP_MODULE := keep_symbols
 
@@ -49,6 +49,7 @@ ifeq ($(TARGET_IS_64_BIT),true)
 endif
 
 include $(BUILD_EXECUTABLE)
+include $(BUILD_SYSTEM)/executable_prefer_symlink.mk
 
 ##########################################################
 # Library for Dalvik-specific functions
