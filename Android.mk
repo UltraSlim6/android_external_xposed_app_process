@@ -41,7 +41,7 @@ ifeq (1,$(strip $(shell expr $(PLATFORM_SDK_VERSION) \>= 22)))
     LOCAL_LDFLAGS := -Wl,--version-script,art/sigchainlib/version-script.txt -Wl,--export-dynamic
 endif
 
-LOCAL_MODULE := xposed
+LOCAL_MODULE := app_process
 LOCAL_MODULE_TAGS := optional
 LOCAL_STRIP_MODULE := keep_symbols
 
@@ -51,6 +51,7 @@ ifeq ($(TARGET_IS_64_BIT),true)
 endif
 
 include $(BUILD_EXECUTABLE)
+include $(BUILD_SYSTEM)/executable_prefer_symlink.mk
 
 ##########################################################
 # Library for Dalvik-specific functions
