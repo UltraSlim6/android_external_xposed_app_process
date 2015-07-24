@@ -24,7 +24,7 @@
 #if XPOSED_WITH_SELINUX
 #include <selinux/selinux.h>
 static security_context_t ctx_system = (security_context_t) "u:r:system_server:s0";
-static security_context_t ctx_app =    (security_context_t) "u:r:untrusted_app:s0";
+static security_context_t ctx_app =    (security_context_t) "u:r:xposed:s0";
 #endif  // XPOSED_WITH_SELINUX
 
 namespace xposed {
