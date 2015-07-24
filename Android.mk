@@ -62,5 +62,5 @@ endif
 ##########################################################
 
 ifeq (1,$(strip $(shell expr $(PLATFORM_SDK_VERSION) \>= 19)))
-    include frameworks/base/cmds/xposed/ART.mk
+    include $(LOCAL_PATH)/ART.mk
 endif
