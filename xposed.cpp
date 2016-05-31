@@ -79,6 +79,11 @@ bool initialize(bool zygote, bool startSystemServer, const char* className, int 
         return false;
 #endif
 
+    if (isMinimalFramework()) {
+        ALOGI("Not loading Xposed for minimal framework (encrypted device)");
+        return false;
+    }
+
     xposed->zygote = zygote;
     xposed->startSystemServer = startSystemServer;
     xposed->startClassName = className;
@@ -93,7 +98,7 @@ bool initialize(bool zygote, bool startSystemServer, const char* className, int 
 #endif  // XPOSED_WITH_SELINUX
 
     if (startSystemServer) {
-        xposed::logcat::start();
+        xposed::logcat::printStartupMarker();
     } else if (zygote) {
         // TODO Find a better solution for this
         // Give the primary Zygote process a little time to start first.
@@ -104,17 +109,24 @@ bool initialize(bool zygote, bool startSystemServer, const char* className, int 
     printRomInfo();
 
     if (startSystemServer) {
-#if PLATFORM_SDK_VERSION >= 21
-        htcAdjustSystemServerClassPath();
-#endif
-        if (!xposed::service::startAll())
+        if (!xposed::service::startAll()) {
             return false;
+        }
+        xposed::logcat::start();
 #if XPOSED_WITH_SELINUX
     } else if (xposed->isSELinuxEnabled) {
-        if (!xposed::service::startMembased())
+        if (!xposed::service::startMembased()) {
             return false;
+        }
 #endif  // XPOSED_WITH_SELINUX
     }
+
+#if XPOSED_WITH_SELINUX
+    // Don't let any further forks access the Zygote service
+    if (xposed->isSELinuxEnabled) {
+        xposed::service::membased::restrictMemoryInheritance();
+    }
+#endif  // XPOSED_WITH_SELINUX
 
     // FIXME Zygote has no access to input devices, this would need to be check in system_server context
     if (zygote && !isSafemodeDisabled() && detectSafemodeTrigger(shouldSkipSafemodeDelay()))
@@ -333,16 +345,6 @@ bool addJarToClasspath() {
     }
 }
 
-#if PLATFORM_SDK_VERSION >= 21
-/** On HTC ROMs, ensure that ub.jar is compiled before the system server is started. */
-void htcAdjustSystemServerClassPath() {
-    if (access("/system/framework/ub.jar", F_OK) != 0)
-        return;
-
-    addPathToEnv("SYSTEMSERVERCLASSPATH", "/system/framework/ub.jar");
-}
-#endif
-
 /** Callback which checks the loaded shared libraries for libdvm/libart. */
 static bool determineRuntime(const char** xposedLibPath) {
     FILE *fp = fopen("/proc/self/maps", "r");
@@ -441,6 +443,20 @@ void dropCapabilities(int8_t keep[]) {
     }
 
     capset(&header, &cap[0]);
+}
+
+/**
+ * Checks whether the system is booting into a minimal Android framework.
+ * This is the case when the device is encrypted with a password that
+ * has to be entered on boot. /data is a tmpfs in that case, so we
+ * can't load any modules anyway.
+ * The system will reboot later with the full framework.
+ */
+bool isMinimalFramework() {
+    char voldDecrypt[PROPERTY_VALUE_MAX];
+    property_get("vold.decrypt", voldDecrypt, "");
+    return ((strcmp(voldDecrypt, "trigger_restart_min_framework") == 0) ||
+            (strcmp(voldDecrypt, "1") == 0));
 }
 
 }  // namespace xposed
